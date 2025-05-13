@@ -1,0 +1,37 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spam Detector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Email/SMS Spam Detector</h1>
+        <div class="input-section">
+            <textarea id="message-input" placeholder="Enter your email or SMS message here..."></textarea>
+            <button id="check-button">Check for Spam</button>
+        </div>
+        
+        <div class="result-section" id="result-section">
+            <div class="result-card hidden" id="result-card">
+                <div class="result-header" id="result-header">
+                    <h2 id="result-title">Not Spam</h2>
+                </div>
+                <div class="result-details">
+                    <div class="probability">
+                        <span>Spam Probability:</span>
+                        <div class="progress-container">
+                            <div class="progress-bar" id="probability-bar"></div>
+                        </div>
+                        <span id="probability-value">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
