@@ -7,17 +7,30 @@
 }
 
 body {
-    background-color: #f5f5f5;
-    padding: 20px;
+    font-family: 'Roboto', sans-serif; /* More modern font */
+    background-color: #f8f9fa; /* Lighter gray */
+    color: #343a40; /* Darker text for better readability */
+    padding-top: 70px; /* Account for fixed navbar */
 }
 
 .container {
-    max-width: 800px;
+    max-width: 960px; /* Slightly wider for better content layout */
     margin: 0 auto;
     background-color: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 20px;
+}
+
+.card {
+    border: none; /* Remove default card border for a cleaner look with shadows */
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #e9ecef; /* Light gray header */
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 500;
 }
 
 h1 {
@@ -43,6 +56,25 @@ textarea {
     margin-bottom: 10px;
 }
 
+/* Buttons */
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+.btn-secondary:hover {
+    background-color: #545b62;
+    border-color: #545b62;
+}
+
 button {
     background-color: #4CAF50;
     color: white;
@@ -65,29 +97,35 @@ button:hover {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .result-card {
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: .25rem;
+    margin-top: 1rem;
+    box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
 }
 
 .result-header {
-    padding: 15px;
-    text-align: center;
+    padding: .75rem 1.25rem;
+    margin-bottom: 0;
     color: white;
-    background-color: #4CAF50;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+    border-top-left-radius: .25rem;
+    border-top-right-radius: .25rem;
 }
 
-.spam {
-    background-color: #f44336;
+.result-header.spam {
+    background-color: #dc3545; /* Bootstrap danger red */
+}
+
+.result-header.not-spam {
+    background-color: #28a745; /* Bootstrap success green */
 }
 
 .result-details {
-    padding: 20px;
-    background-color: #f9f9f9;
+    padding: 1.25rem;
+    background-color: #fff;
 }
 
 .probability {
@@ -121,4 +159,95 @@ button:hover {
 #probability-value {
     min-width: 50px;
     text-align: right;
+}
+
+.probability-section .progress {
+    height: 25px;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.probability-text {
+    font-weight: bold;
+}
+
+/* Feedback Buttons */
+.feedback-buttons button {
+    margin-right: 5px;
+}
+
+/* Batch Results Table */
+#batch-results-table {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+}
+
+#batch-results-table th, #batch-results-table td {
+    vertical-align: middle;
+}
+
+.table .thead-light th {
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+
+/* Loading Spinner for buttons */
+.btn .spinner-border {
+    margin-right: 5px;
+}
+
+/* Alert Styling */
+.alert-custom {
+    padding: .75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: .25rem;
+}
+
+.alert-custom-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-custom-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+/* Footer */
+.footer {
+    font-size: 0.9em;
+    background-color: #e9ecef !important; /* Ensure footer bg color */
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+
+/* Navbar */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+/* Tab styling for batch prediction */
+.nav-tabs .nav-link.active {
+    color: #007bff;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+.nav-tabs .nav-link {
+    color: #495057;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    body {
+        padding-top: 56px; /* Adjust for smaller navbar */
+    }
+    h1 {
+        font-size: 1.75rem;
+    }
+    .nav-tabs .nav-link {
+        padding: .5rem .75rem;
+    }
 }

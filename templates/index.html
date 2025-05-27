@@ -4,34 +4,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spam Detector</title>
+    <title>Advanced Spam Detector</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>Email/SMS Spam Detector</h1>
-        <div class="input-section">
-            <textarea id="message-input" placeholder="Enter your email or SMS message here..."></textarea>
-            <button id="check-button">Check for Spam</button>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">Spam Detector Pro</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about-section">About</a>
+                    </li>
+                </ul>
+            </div>
         </div>
-        
-        <div class="result-section" id="result-section">
-            <div class="result-card hidden" id="result-card">
-                <div class="result-header" id="result-header">
-                    <h2 id="result-title">Not Spam</h2>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <h1 class="text-center mb-4">Email/SMS Spam Detector</h1>
+            </div>
+        </div>
+
+        <!-- Single Message Prediction -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Check a Single Message</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <textarea id="message-input" class="form-control" rows="4" placeholder="Enter your email or SMS message here..."></textarea>
                 </div>
-                <div class="result-details">
-                    <div class="probability">
-                        <span>Spam Probability:</span>
-                        <div class="progress-container">
-                            <div class="progress-bar" id="probability-bar"></div>
-                        </div>
-                        <span id="probability-value">0%</span>
-                    </div>
+                <button id="check-button" class="btn btn-primary btn-block">
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    Check for Spam
+                </button>
+                <div id="single-result-section" class="mt-3">
+                    <!-- Single result will be displayed here by script.js -->
                 </div>
             </div>
         </div>
+
+        <!-- Batch Prediction -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Batch Prediction</h2>
+            </div>
+            <div class="card-body">
+                <nav>
+                    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                        <a class="nav-item nav-link active" id="nav-text-tab" data-toggle="tab" href="#nav-text" role="tab" aria-controls="nav-text" aria-selected="true">Paste Text</a>
+                        <a class="nav-item nav-link" id="nav-file-tab" data-toggle="tab" href="#nav-file" role="tab" aria-controls="nav-file" aria-selected="false">Upload File (.txt, .csv)</a>
+                    </div>
+                </nav>
+                <div class="tab-content pt-3" id="nav-tabContent">
+                    <div class="tab-pane fade show active" id="nav-text" role="tabpanel" aria-labelledby="nav-text-tab">
+                        <div class="form-group">
+                            <textarea id="batch-message-input" class="form-control" rows="6" placeholder="Enter multiple messages, one per line..."></textarea>
+                        </div>
+                        <button id="batch-check-text-button" class="btn btn-secondary btn-block">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            Check Batch Text
+                        </button>
+                    </div>
+                    <div class="tab-pane fade" id="nav-file" role="tabpanel" aria-labelledby="nav-file-tab">
+                        <div class="form-group">
+                            <label for="batch-file-input">Upload a .txt or .csv file:</label>
+                            <input type="file" class="form-control-file" id="batch-file-input" accept=".txt,.csv">
+                        </div>
+                        <button id="batch-check-file-button" class="btn btn-secondary btn-block">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            Check Batch File
+                        </button>
+                    </div>
+                </div>
+                <div id="batch-results-section" class="mt-3">
+                    <!-- Batch results will be displayed here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Error Display Area -->
+        <div id="error-alert-container" class="mt-3"></div>
+
+
+        <!-- About Section -->
+        <div id="about-section" class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">About This Tool</h2>
+            </div>
+            <div class="card-body">
+                <p>This Spam Detector uses a Machine Learning model (Naive Bayes with TF-IDF vectorization) to classify messages as "Spam" or "Not Spam".</p>
+                <p><strong>Features:</strong></p>
+                <ul>
+                    <li><strong>Single Message Check:</strong> Get an instant prediction for any message.</li>
+                    <li><strong>Batch Prediction:</strong> Check multiple messages at once by pasting text or uploading a file.</li>
+                    <li><strong>Confidence Score:</strong> See the probability of a message being spam.</li>
+                    <li><strong>User Feedback:</strong> Help improve the model by marking predictions as correct or incorrect (<em>feedback helps us refine future versions!</em>).</li>
+                    <li><strong>API Available:</strong> A <a href="/api/predict" target="_blank"><code>/api/predict</code></a> endpoint is available for programmatic access (POST request with JSON <code>{"message": "your message here"}</code>).</li>
+                </ul>
+                <p>The model was trained on a dataset of SMS messages and continuously learns from feedback.</p>
+                <p><em>Current model version: 1.1.0 (TF-IDF, Feedback Enabled)</em></p>
+            </div>
+        </div>
+
     </div>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Spam Detector Pro &copy; 2024-2025. </span>
+            <span class="text-muted" id="current-date"></span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS, Popper.js, and jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
