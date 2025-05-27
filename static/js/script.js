@@ -78,8 +78,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="feedback-buttons">
                     <small class="mr-2">Was this prediction correct?</small>
-                    <button class="btn btn-sm btn-outline-success feedback-btn" data-message='''${escapeHTML(resultData.text)}''' data-predicted='''${predictionText}''' data-feedback="correct">Yes</button>
-                    <button class="btn btn-sm btn-outline-danger feedback-btn" data-message='''${escapeHTML(resultData.text)}''' data-predicted='''${predictionText}''' data-feedback="incorrect">No</button>
+                    <button class="btn btn-sm btn-outline-success feedback-btn" data-message="${escapeHTML(resultData.text)}" data-predicted="${predictionText}" data-feedback="correct">Yes</button>
+                    <button class="btn btn-sm btn-outline-danger feedback-btn" data-message="${escapeHTML(resultData.text)}" data-predicted="${predictionText}" data-feedback="incorrect">No</button>
                 </div>
             </div>
         `;
@@ -198,8 +198,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td class="${isSpam ? 'text-danger' : 'text-success'}">${predictionText}</td>
                         <td>${parseFloat(result.spam_probability).toFixed(2)}%</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-success feedback-btn" title="Correct" data-message='''${escapeHTML(result.text)}''' data-predicted='''${predictionText}''' data-feedback="correct"><small>Yes</small></button>
-                            <button class="btn btn-sm btn-outline-danger feedback-btn" title="Incorrect" data-message='''${escapeHTML(result.text)}''' data-predicted='''${predictionText}''' data-feedback="incorrect"><small>No</small></button>
+                            <button class="btn btn-sm btn-outline-success feedback-btn" title="Correct" data-message="${escapeHTML(result.text)}" data-predicted="${predictionText}" data-feedback="correct"><small>Yes</small></button>
+                            <button class="btn btn-sm btn-outline-danger feedback-btn" title="Incorrect" data-message="${escapeHTML(result.text)}" data-predicted="${predictionText}" data-feedback="incorrect"><small>No</small></button>
                         </td>
                     `;
                 });
@@ -245,9 +245,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) {
                 throw new Error(result.error || 'Failed to submit feedback');
             }
-            // Visually indicate success, maybe change button style or add a small message
-            button.closest('.feedback-buttons').innerHTML = '<small class="text-success"><em>Feedback sent!</em></small>';
-            // displayError('Feedback submitted successfully!', 'success'); // Or a less intrusive way
+            // Visually indicate success by replacing the content of the button's parent element
+            if (button.parentElement) {
+                button.parentElement.innerHTML = '<small class="text-success"><em>Feedback sent! Thank you.</em></small>';
+            }
+            // displayError('Feedback submitted successfully!', 'success'); // Alternative: use the main alert area
         } catch (error) {
             console.error('Feedback Error:', error);
             displayError(`Feedback Error: ${error.message}`);

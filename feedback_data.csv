@@ -1,0 +1,12 @@
+message,predicted_as,user_marked_as_actual
+"ham	Hey, are we still on for lunch at 2pm?",Not Spam,spam
+ham	Meeting moved to 3pm. Please update your calendar.,Not Spam,ham
+spam	Exclusive offer! Earn money from home in your spare time.,Not Spam,spam
+ham	Can you help me review this report before the meeting?,Not Spam,ham
+"ham	Hey, are we still on for lunch at 2pm?",Not Spam,ham
+spam	Get cheap meds without a prescription. Visit our site now!,Not Spam,ham
+Meeting moved to 3pm. Please update your calendar.,Not Spam,ham
+"Hey, are we still on for lunch at 2pm?",Not Spam,ham
+Don't forget to submit your assignment by midnight.,Not Spam,ham
+Can you help me review this report before the meeting?,Not Spam,spam
+You’ve been selected for a free cruise to the Bahamas!,Spam,ham

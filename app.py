@@ -66,85 +66,159 @@ def predict_message():
 
 @app.route('/predict_batch', methods=['POST'])
 def predict_batch():
-    if 'file' not in request.files:
-        messages_text = request.form.get('messages_text', '')
-        if not messages_text:
-            return jsonify({'error': 'No file or text provided for batch prediction'}), 400
-        messages = [msg.strip() for msg in messages_text.split('\\n') if msg.strip()]
-    else:
+    messages = []  # Initialize messages
+    temp_path = None # Initialize temp_path for cleanup
+    file_uploaded = False
+
+    if 'file' in request.files and request.files['file'].filename != '':
         file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No selected file for batch prediction'}), 400
+        file_uploaded = True
+        app.logger.info(f"File upload attempt: {file.filename}")
         
         try:
             # Use a temporary file to handle uploads securely
-            _, temp_path = tempfile.mkstemp(suffix=os.path.splitext(file.filename)[1])
+            fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(file.filename)[1])
+            os.close(fd)  # Close the raw file descriptor, as save() will reopen
             file.save(temp_path)
+            app.logger.info(f"Uploaded file '{file.filename}' saved temporarily to: {temp_path}")
+
+            common_encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
 
             if file.filename.endswith('.csv'):
-                df = pd.read_csv(temp_path)
-                # Assuming the CSV has a column named 'text' or 'message' for messages
-                if 'text' in df.columns:
-                    messages = df['text'].astype(str).tolist()
-                elif 'message' in df.columns:
-                    messages = df['message'].astype(str).tolist()
-                elif 'v2' in df.columns: # From spam_dataset.csv format
-                    messages = df['v2'].astype(str).tolist()
-                else:
-                    os.remove(temp_path)
-                    return jsonify({'error': 'CSV file must contain a "text", "message", or "v2" column'}), 400
-            elif file.filename.endswith('.txt'):
-                with open(temp_path, 'r', encoding='utf-8') as f:
-                    messages = [line.strip() for line in f if line.strip()]
-            else:
-                os.remove(temp_path)
-                return jsonify({'error': 'Unsupported file type. Please upload .csv or .txt'}), 400
-            
-            os.remove(temp_path) # Clean up temp file
+                df = None
+                for encoding in common_encodings:
+                    try:
+                        df = pd.read_csv(temp_path, encoding=encoding)
+                        app.logger.info(f"Successfully read CSV '{file.filename}' with encoding: {encoding}")
+                        break
+                    except UnicodeDecodeError:
+                        app.logger.warning(f"Failed to decode CSV '{file.filename}' with {encoding}, trying next.")
+                        continue
+                    except pd.errors.EmptyDataError:
+                        app.logger.warning(f"CSV file '{file.filename}' is empty.")
+                        df = pd.DataFrame() # Create empty DataFrame to avoid None error later
+                        break # Successfully processed an empty file
+                    except Exception as e_read:
+                        app.logger.warning(f"Pandas read_csv error for '{file.filename}' with encoding {encoding}: {e_read}")
+                        # Don't break here, try other encodings
+                
+                if df is None: # If all encodings failed for a non-empty file
+                    app.logger.error(f"Could not read CSV file '{file.filename}' with any attempted encodings or it's malformed.")
+                    return jsonify({'error': f"Could not read CSV file '{file.filename}'. It might be malformed or use an unsupported encoding."}), 500
 
+                if not df.empty:
+                    if 'text' in df.columns:
+                        messages = df['text'].astype(str).tolist()
+                    elif 'message' in df.columns:
+                        messages = df['message'].astype(str).tolist()
+                    elif 'v2' in df.columns:  # From spam_dataset.csv format
+                        messages = df['v2'].astype(str).tolist()
+                    else:
+                        app.logger.error(f"CSV file '{file.filename}' missing required column.")
+                        return jsonify({'error': 'CSV file must contain a "text", "message", or "v2" column'}), 400
+                # If df is empty, messages remains [], which is handled later
+
+            elif file.filename.endswith('.txt'):
+                read_success = False
+                for encoding in common_encodings:
+                    try:
+                        with open(temp_path, 'r', encoding=encoding) as f_txt:
+                            messages = [line.strip() for line in f_txt if line.strip()]
+                        app.logger.info(f"Successfully read TXT file '{file.filename}' with encoding: {encoding}")
+                        read_success = True
+                        break
+                    except UnicodeDecodeError:
+                        app.logger.warning(f"Failed to decode TXT file '{file.filename}' with {encoding}, trying next.")
+                        continue
+                if not read_success and not messages: # If all encodings failed and messages is still empty
+                    app.logger.error(f"Could not read TXT file '{file.filename}' or it is empty.")
+                    return jsonify({'error': f"Could not read TXT file '{file.filename}'. It might be empty or use an unsupported encoding."}), 500
+            else:
+                app.logger.warning(f"Unsupported file type uploaded: {file.filename}")
+                return jsonify({'error': 'Unsupported file type. Please upload .csv or .txt'}), 400
+        
         except Exception as e:
-            app.logger.error(f"File processing error: {e}")
-            if 'temp_path' in locals() and os.path.exists(temp_path):
-                os.remove(temp_path)
+            app.logger.error(f"File processing error for '{file.filename if file else 'N/A'}': {e}", exc_info=True)
             return jsonify({'error': f'Error processing file: {str(e)}'}), 500
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                    app.logger.info(f"Successfully removed temp file: {temp_path}")
+                except Exception as e_remove:
+                    app.logger.error(f"Error removing temp file {temp_path}: {e_remove}")
+    
+    # This branch handles pasted text if no file was uploaded or if file upload was skipped
+    if not file_uploaded:
+        messages_text = request.form.get('messages_text', '')
+        app.logger.info(f"Pasted text received. Length: {len(messages_text)}")
+        if not messages_text:
+            # This case should ideally be hit only if neither file nor text is provided.
+            # If file_uploaded was true but messages list is empty (e.g. empty file), it's handled below.
+            app.logger.warning("No file uploaded and no text pasted for batch prediction.")
+            return jsonify({'error': 'No file or text provided for batch prediction'}), 400
+        messages = [msg.strip() for msg in messages_text.split('\\n') if msg.strip()]
 
     if not messages:
-        return jsonify({'error': 'No messages found in the input'}), 400
+        app.logger.warning("No messages found after processing input or file (e.g., empty file or only whitespace text).")
+        return jsonify({'error': 'No messages found in the input, or the file was empty/malformed.'}), 400
         
     try:
-        results = detector.predict(messages) # predict can handle a list of messages
+        app.logger.info(f"Predicting for {len(messages)} messages.")
+        results = detector.predict(messages) 
         return jsonify(results)
     except Exception as e:
-        app.logger.error(f"Batch prediction error: {e}")
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Batch prediction error: {e}", exc_info=True)
+        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
 
 @app.route('/feedback', methods=['POST'])
 def handle_feedback():
     data = request.get_json()
+    if not data:
+        app.logger.error("Feedback endpoint received no JSON data.")
+        return jsonify({'error': 'No JSON data received'}), 400
+
     message = data.get('message')
-    actual_label = data.get('actual_label') # 'spam' or 'ham'
-    predicted_label_str = data.get('predicted_label') # 'Spam' or 'Not Spam'
+    actual_label = data.get('actual_label')  # Expected: 'spam' or 'ham'
+    predicted_label_str = data.get('predicted_label')  # Expected: 'Spam' or 'Not Spam'
+
+    # Log exactly what was received
+    app.logger.info(f"Feedback received: message='{message}', actual_label='{actual_label}', predicted_label_str='{predicted_label_str}'")
 
     if not message or not actual_label or predicted_label_str is None:
-        return jsonify({'error': 'Missing data for feedback'}), 400
+        # Log which specific field(s) were considered missing
+        missing_fields = []
+        if not message:
+            missing_fields.append("message (is empty or None)")
+        if not actual_label:
+            missing_fields.append("actual_label (is empty or None)")
+        if predicted_label_str is None: # Check specifically for None for predicted_label_str
+            missing_fields.append("predicted_label (is None)")
+        
+        app.logger.warning(f"Feedback attempt missing data. Problem fields: {', '.join(missing_fields)}. Raw received: data='{data}'")
+        return jsonify({'error': 'Missing data for feedback. Required fields: message, actual_label, predicted_label.'}), 400
 
-    # Convert predicted_label_str to 'spam' or 'ham'
-    predicted_label = 'spam' if predicted_label_str == 'Spam' else 'ham'
+    # Convert predicted_label_str to 'spam' or 'ham' for storage consistency if needed
+    # current logic in script.js already sends actual_label as 'spam' or 'ham'
+    # predicted_label_str is 'Spam' or 'Not Spam'
 
     try:
-        feedback_df = pd.DataFrame([[message, predicted_label, actual_label]], columns=['message', 'predicted', 'actual'])
-        if os.path.exists(FEEDBACK_FILE):
-            feedback_df.to_csv(FEEDBACK_FILE, mode='a', header=False, index=False)
-        else:
-            feedback_df.to_csv(FEEDBACK_FILE, mode='w', header=True, index=False)
+        feedback_df = pd.DataFrame([[message, predicted_label_str, actual_label]], columns=['message', 'predicted_as', 'user_marked_as_actual'])
         
-        # Optional: Trigger retraining if enough new feedback is collected
-        # For now, just acknowledge feedback
-        # Consider adding a check here: if len(pd.read_csv(FEEDBACK_FILE)) % N == 0: call retrain_model_with_feedback()
+        # Standardize column names for feedback CSV if they were different before
+        # For example, if you want 'v2' and 'v1' like your training data:
+        # feedback_to_store_df = pd.DataFrame([[message, actual_label]], columns=['v2', 'v1'])
 
+
+        if os.path.exists(FEEDBACK_FILE):
+            feedback_df.to_csv(FEEDBACK_FILE, mode='a', header=False, index=False, encoding='utf-8')
+        else:
+            feedback_df.to_csv(FEEDBACK_FILE, mode='w', header=True, index=False, encoding='utf-8')
+        
+        app.logger.info(f"Feedback stored successfully for message: {message[:50]}...")
         return jsonify({'status': 'success', 'message': 'Feedback received. Thank you!'})
     except Exception as e:
-        app.logger.error(f"Feedback storage error: {e}")
+        app.logger.error(f"Feedback storage error: {e}", exc_info=True)
         return jsonify({'error': f'Could not store feedback: {str(e)}'}), 500
 
 # Placeholder for retraining logic using feedback. Could be a separate script or admin endpoint.
