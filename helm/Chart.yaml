@@ -1,0 +1,26 @@
+apiVersion: v2
+name: spam-detector
+description: A Helm chart for SMS Spam Detector application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - machine-learning
+  - spam-detection
+  - flask
+  - nlp
+home: https://github.com/davidx345/email-spam-sms
+sources:
+  - https://github.com/davidx345/email-spam-sms
+maintainers:
+  - name: David
+    email: david@example.com
+dependencies:
+  - name: redis
+    version: "17.15.6"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  - name: postgresql
+    version: "12.12.10"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled

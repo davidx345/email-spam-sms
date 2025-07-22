@@ -1,0 +1,103 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "SMS Spam Detector - Application Metrics",
+    "tags": ["spam-detector", "ml", "flask"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(flask_http_request_total[5m])",
+            "legendFormat": "Requests/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests/sec"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Prediction Accuracy Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(spam_detector_predictions_total{prediction=\"Spam\"}[5m])",
+            "legendFormat": "Spam Predictions/sec"
+          },
+          {
+            "expr": "rate(spam_detector_predictions_total{prediction=\"Ham\"}[5m])",
+            "legendFormat": "Ham Predictions/sec"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Response Times",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(spam_detector_prediction_duration_seconds_bucket[5m])) * 1000",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(spam_detector_prediction_duration_seconds_bucket[5m])) * 1000",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Response Time (ms)"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Cache Hit Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(spam_detector_cache_hits_total[5m]) / (rate(spam_detector_cache_hits_total[5m]) + rate(spam_detector_cache_misses_total[5m])) * 100",
+            "legendFormat": "Cache Hit Rate %"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "System Resources",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes / 1024 / 1024",
+            "legendFormat": "Memory Usage (MB)"
+          },
+          {
+            "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+            "legendFormat": "CPU Usage %"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(spam_detector_prediction_errors_total[5m])",
+            "legendFormat": "Errors/sec"
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "10s"
+  }
+}

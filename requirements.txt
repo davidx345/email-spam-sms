@@ -1,5 +1,52 @@
+# Core Flask and ML dependencies
 flask>=3.0.0
 pandas>=2.1.0
 numpy>=1.24.0
 scikit-learn>=1.3.0
-gunicorn
+gunicorn>=21.2.0
+
+# Database and caching
+redis>=5.0.0
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
+flask-sqlalchemy>=3.0.0
+
+# Monitoring and observability
+prometheus-flask-exporter>=0.23.0
+psutil>=5.9.0
+flask-limiter>=3.5.0
+
+# Security and validation
+flask-wtf>=1.2.0
+cryptography>=41.0.0
+pyjwt>=2.8.0
+
+# Testing and development
+pytest>=7.4.0
+pytest-flask>=1.3.0
+pytest-cov>=4.1.0
+coverage[toml]>=7.3.0
+locust>=2.17.0
+
+# Code quality
+bandit>=1.7.0
+flake8>=6.1.0
+black>=23.9.0
+isort>=5.12.0
+
+# Deployment and configuration
+python-dotenv>=1.0.0
+click>=8.1.0
+
+# Additional ML libraries for advanced features
+transformers>=4.35.0
+torch>=2.1.0
+sentence-transformers>=2.2.0
+
+# API documentation
+flask-restx>=1.3.0
+flasgger>=0.9.7
+
+# Background tasks
+celery>=5.3.0
+flower>=2.0.0

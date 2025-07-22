@@ -4,9 +4,44 @@ from model import SpamDetector # Assuming SpamDetector is in model.py
 import os
 import pandas as pd
 import tempfile # For handling file uploads securely
+import logging
+import time
+from datetime import datetime
+from functools import wraps
+import redis
+from prometheus_flask_exporter import PrometheusMetrics
+import psutil
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/app.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24) # Needed for flash messages
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
+
+# Handle proxy headers for proper IP detection
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+# Initialize Prometheus metrics
+metrics = PrometheusMetrics(app)
+metrics.info('app_info', 'Application info', version='1.0.0')
+
+# Redis connection for caching
+try:
+    redis_client = redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'))
+    redis_client.ping()
+    logger.info("Redis connection established")
+except:
+    redis_client = None
+    logger.warning("Redis not available, caching disabled")
 
 detector = SpamDetector()
 
@@ -49,20 +84,138 @@ initialize_model() # Load or train the model when the app starts
 def index():
     return render_template('index.html')
 
+# Rate limiting decorator
+def rate_limit(max_requests=100, window=60):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if redis_client:
+                client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+                key = f"rate_limit:{client_ip}:{f.__name__}"
+                
+                current = redis_client.get(key)
+                if current is None:
+                    redis_client.setex(key, window, 1)
+                else:
+                    if int(current) >= max_requests:
+                        return jsonify({'error': 'Rate limit exceeded'}), 429
+                    redis_client.incr(key)
+            
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for load balancers."""
+    try:
+        # Check model status
+        model_status = "healthy" if detector.is_trained else "training_required"
+        
+        # Check Redis connection
+        redis_status = "healthy"
+        if redis_client:
+            try:
+                redis_client.ping()
+            except:
+                redis_status = "unhealthy"
+        else:
+            redis_status = "disabled"
+        
+        # Check system resources
+        memory_usage = psutil.virtual_memory().percent
+        cpu_usage = psutil.cpu_percent()
+        
+        health_data = {
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'model_status': model_status,
+            'redis_status': redis_status,
+            'system': {
+                'memory_usage_percent': memory_usage,
+                'cpu_usage_percent': cpu_usage
+            }
+        }
+        
+        # Return unhealthy status if critical issues
+        if memory_usage > 90 or cpu_usage > 90 or model_status != "healthy":
+            health_data['status'] = 'unhealthy'
+            return jsonify(health_data), 503
+            
+        return jsonify(health_data), 200
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 503
+
+@app.route('/ready')
+def readiness_check():
+    """Readiness check for Kubernetes."""
+    if detector.is_trained:
+        return jsonify({'status': 'ready'}), 200
+    else:
+        return jsonify({'status': 'not_ready', 'reason': 'model_not_trained'}), 503
+
 @app.route('/predict', methods=['POST'])
+@rate_limit(max_requests=50, window=60)
 def predict_message():
-    data = request.get_json()
-    message = data.get('message', '')
-    
-    if not message:
-        return jsonify({'error': 'No message provided'}), 400
+    start_time = time.time()
     
     try:
-        result = detector.predict(message) # predict now returns a dict for single message
-        return jsonify(result)
+        # Validate content type
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({'error': 'No message provided'}), 400
+            
+        if len(message) > 1000:  # Limit message length
+            return jsonify({'error': 'Message too long (max 1000 characters)'}), 400
+        
+        # Check cache first
+        cache_key = f"prediction:{hash(message)}"
+        if redis_client:
+            cached_result = redis_client.get(cache_key)
+            if cached_result:
+                logger.info(f"Cache hit for message hash: {hash(message)}")
+                metrics.counter('cache_hits_total').inc()
+                return jsonify(eval(cached_result))
+        
+        # Make prediction
+        result = detector.predict(message)
+        
+        # Cache result
+        if redis_client and result:
+            redis_client.setex(cache_key, 300, str(result[0]))  # Cache for 5 minutes
+            metrics.counter('cache_misses_total').inc()
+        
+        # Log prediction
+        processing_time = time.time() - start_time
+        logger.info(f"Prediction made: {result[0]['prediction']} (confidence: {result[0]['probability']:.2f}) in {processing_time:.3f}s")
+        
+        # Record metrics
+        metrics.histogram('prediction_duration_seconds').observe(processing_time)
+        metrics.counter('predictions_total', labels={'prediction': result[0]['prediction']}).inc()
+        
+        return jsonify({
+            'text': message,
+            'prediction': result[0]['prediction'],
+            'is_spam': result[0]['is_spam'],
+            'spam_probability': result[0]['probability'],
+            'processing_time': processing_time
+        })
+        
     except Exception as e:
-        app.logger.error(f"Prediction error: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Prediction error: {e}")
+        metrics.counter('prediction_errors_total').inc()
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/predict_batch', methods=['POST'])
 def predict_batch():
