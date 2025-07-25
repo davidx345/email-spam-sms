@@ -5,6 +5,8 @@ import os
 import pandas as pd
 import tempfile # For handling file uploads securely
 import logging
+
+import logging
 import time
 from datetime import datetime
 from functools import wraps
@@ -13,17 +15,25 @@ from prometheus_flask_exporter import PrometheusMetrics
 import psutil
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+# Ensure logs directory exists before setting up logging
+LOG_DIR = 'logs'
+LOG_FILE = 'logs/app.log'
+try:
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+except Exception as e:
+    print(f"Warning: Could not create logs directory: {e}")
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/app.log'),
+        logging.FileHandler(LOG_FILE),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
-
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 
